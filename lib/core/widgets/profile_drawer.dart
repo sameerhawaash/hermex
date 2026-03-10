@@ -179,7 +179,8 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
   @override
   Widget build(BuildContext context) {
     final userProfileAsync = ref.watch(userProfileProvider);
-    final shipmentsAsync = ref.watch(merchantShipmentsProvider);
+    final merchantShipmentsAsync = ref.watch(merchantShipmentsProvider);
+    final courierShipmentsAsync = ref.watch(courierShipmentsProvider);
 
     return Drawer(
       backgroundColor: AppColors.skyBlueBg,
@@ -237,7 +238,18 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
                         if (profile == null) {
                           return const Center(child: Text('رجاءً سجل الدخول'));
                         }
-                        return _buildProfileContent(profile, shipmentsAsync);
+
+                        final role = profile['role'];
+                        final isCourier = role == 'courier';
+                        final shipmentsAsync = isCourier
+                            ? courierShipmentsAsync
+                            : merchantShipmentsAsync;
+
+                        return _buildProfileContent(
+                          profile,
+                          isCourier,
+                          shipmentsAsync,
+                        );
                       },
                       loading: () =>
                           const Center(child: CircularProgressIndicator()),
@@ -335,11 +347,12 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
 
   Widget _buildProfileContent(
     Map<String, dynamic> profile,
+    bool isCourier,
     AsyncValue<List<Map<String, dynamic>>> shipmentsAsync,
   ) {
     final fullName = profile['full_name'] ?? 'مستخدم غير معروف';
     final phone = profile['phone'] ?? '+20 000 000 0000';
-    final email = profile['email'] ?? 'merchant@test.com';
+    final email = profile['email'] ?? '';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 70, 20, 20),
@@ -357,174 +370,14 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
           Expanded(
             child: shipmentsAsync.when(
               data: (shipments) {
-                int accepted = shipments
-                    .where((s) => s['status'] == 'accepted')
-                    .length;
-                int pending = shipments
-                    .where((s) => s['status'] == 'pending')
-                    .length;
-                int delivered = shipments
-                    .where((s) => s['status'] == 'delivered')
-                    .length;
-
-                return ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    _buildStatButton(
-                      title: 'الشحنات المقبولة',
-                      count: accepted,
-                      icon: Icons.check_circle,
-                      iconColor: Colors.green,
-                      bgColor: Colors.green.shade50,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildStatButton(
-                      title: 'بانتظار التسليم',
-                      count: pending,
-                      icon: Icons.access_time_filled,
-                      iconColor: Colors.orange,
-                      bgColor: Colors.orange.shade50,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildStatButton(
-                      title: 'تم التسليم أو مرتجع',
-                      count: delivered,
-                      icon: Icons.sync,
-                      iconColor: Colors.deepOrange,
-                      bgColor: Colors.deepOrange.shade50,
-                    ),
-                    const SizedBox(height: 24),
-
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.orangeButton,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 2,
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.fact_check, color: Colors.white),
-                        label: const Text(
-                          'تأكيد التسليم',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Wallet Balance Card
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final walletAsync = ref.watch(currentWalletProvider);
-                        return walletAsync.when(
-                          data: (wallet) {
-                            final balance =
-                                (wallet?['balance'] as num?)?.toDouble() ?? 0.0;
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.pop(context);
-                                context.push('/courier/wallet');
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      AppColors.primaryBlue,
-                                      AppColors.lightBlue,
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'رصيد المحفظة',
-                                          style: TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${balance.toStringAsFixed(2)} ج.م',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const Icon(
-                                      Icons.account_balance_wallet,
-                                      color: Colors.white,
-                                      size: 32,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                          loading: () => const Padding(
-                            padding: EdgeInsets.all(8),
-                            child: Center(
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                          error: (_, _) => const SizedBox.shrink(),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    // Edit Profile Button
-                    TextButton.icon(
-                      onPressed: () => _showEditDialog(profile),
-                      icon: const Icon(Icons.edit, color: AppColors.lightBlue),
-                      label: const Text(
-                        'تعديل البيانات',
-                        style: TextStyle(
-                          color: AppColors.lightBlue,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    // Logout Button
-                    TextButton.icon(
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await ref.read(authRepositoryProvider).signOut();
-                        if (context.mounted) context.go('/');
-                      },
-                      icon: const Icon(Icons.logout, color: Colors.red),
-                      label: const Text(
-                        'تسجيل الخروج',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ],
-                );
+                if (isCourier) {
+                  return _buildCourierStats(shipments, profile);
+                } else {
+                  return _buildMerchantStats(shipments, profile);
+                }
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => const Text('خطأ في جلب الشحنات'),
+              error: (err, stack) => const Text('خطأ في جلب بيانات الشحنات'),
             ),
           ),
         ],
@@ -532,7 +385,216 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
     );
   }
 
-  Widget _buildStatButton({
+  Widget _buildCourierStats(
+    List<Map<String, dynamic>> shipments,
+    Map<String, dynamic> profile,
+  ) {
+    int delivered = shipments.where((s) => s['status'] == 'delivered').length;
+    int inTransit = shipments
+        .where((s) => s['status'] == 'accepted' || s['status'] == 'in_transit')
+        .length;
+    int rejected = shipments.where((s) => s['status'] == 'rejected').length;
+
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        // Wallet Balance Header
+        Consumer(
+          builder: (context, ref, _) {
+            final walletAsync = ref.watch(currentWalletProvider);
+            return walletAsync.when(
+              data: (wallet) {
+                final balance = (wallet?['balance'] as num?)?.toDouble() ?? 0.0;
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push('/courier/wallet');
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primaryBlue, AppColors.lightBlue],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'رصيد المحفظة',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${balance.toStringAsFixed(2)} ج.م',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Icon(
+                          Icons.account_balance_wallet,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              loading: () => const Padding(
+                padding: EdgeInsets.only(bottom: 20),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
+              error: (_, _) => const SizedBox.shrink(),
+            );
+          },
+        ),
+
+        // Stats Cards
+        _buildStatCard(
+          title: 'شحنات تم تسليمها',
+          count: delivered,
+          icon: Icons.check_circle,
+          iconColor: Colors.green,
+          bgColor: Colors.green.shade50,
+        ),
+        const SizedBox(height: 12),
+        _buildStatCard(
+          title: 'جاري توصيلها',
+          count: inTransit,
+          icon: Icons.local_shipping,
+          iconColor: Colors.blue,
+          bgColor: Colors.blue.shade50,
+        ),
+        const SizedBox(height: 12),
+        _buildStatCard(
+          title: 'مرتجعة',
+          count: rejected,
+          icon: Icons.cancel,
+          iconColor: Colors.red,
+          bgColor: Colors.red.shade50,
+        ),
+
+        const SizedBox(height: 24),
+        _buildActionButtons(profile),
+      ],
+    );
+  }
+
+  Widget _buildMerchantStats(
+    List<Map<String, dynamic>> shipments,
+    Map<String, dynamic> profile,
+  ) {
+    int accepted = shipments.where((s) => s['status'] == 'accepted').length;
+    int pending = shipments.where((s) => s['status'] == 'pending').length;
+    int delivered = shipments.where((s) => s['status'] == 'delivered').length;
+
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        _buildStatCard(
+          title: 'الشحنات المقبولة',
+          count: accepted,
+          icon: Icons.check_circle,
+          iconColor: Colors.green,
+          bgColor: Colors.green.shade50,
+        ),
+        const SizedBox(height: 12),
+        _buildStatCard(
+          title: 'بانتظار التسليم',
+          count: pending,
+          icon: Icons.access_time_filled,
+          iconColor: Colors.orange,
+          bgColor: Colors.orange.shade50,
+        ),
+        const SizedBox(height: 12),
+        _buildStatCard(
+          title: 'تم التسليم أو مرتجع',
+          count: delivered,
+          icon: Icons.sync,
+          iconColor: Colors.deepOrange,
+          bgColor: Colors.deepOrange.shade50,
+        ),
+        const SizedBox(height: 24),
+
+        SizedBox(
+          width: double.infinity,
+          height: 55,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.orangeButton,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 2,
+            ),
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.fact_check, color: Colors.white),
+            label: const Text(
+              'تأكيد التسليم',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        _buildActionButtons(profile),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(Map<String, dynamic> profile) {
+    return Column(
+      children: [
+        TextButton.icon(
+          onPressed: () => _showEditDialog(profile),
+          icon: const Icon(Icons.edit, color: AppColors.lightBlue),
+          label: const Text(
+            'تعديل البيانات',
+            style: TextStyle(
+              color: AppColors.lightBlue,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        TextButton.icon(
+          onPressed: () async {
+            final router = GoRouter.of(context);
+            Navigator.pop(context);
+            await ref.read(authRepositoryProvider).signOut();
+            router.go('/');
+          },
+          icon: const Icon(Icons.logout, color: Colors.red),
+          label: const Text(
+            'تسجيل الخروج',
+            style: TextStyle(
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
     required String title,
     required int count,
     required IconData icon,

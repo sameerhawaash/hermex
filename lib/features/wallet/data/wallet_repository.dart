@@ -89,50 +89,12 @@ class WalletRepository {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('User not authenticated');
 
-    // 1. Fetch the user's wallet (single row per user)
-    final wallet = await _supabase
-        .from('wallets')
-        .select('id, balance')
-        .eq('user_id', userId)
-        .single();
-
-    final walletId = wallet['id'] as String;
-    final currentBalance = (wallet['balance'] as num).toDouble();
-
-    // 2. Check for an existing transaction with this orderId
-    final existing = await _supabase
-        .from('transactions')
-        .select('id, status')
-        .eq('wallet_id', walletId)
-        .eq('reference_id', orderId)
-        .maybeSingle();
-
-    // ── Guard: if Webhook already completed it, skip to avoid double-credit ──
-    if (existing != null && existing['status'] == 'completed') {
-      return; // Webhook beat us to it — wallet already updated.
-    }
-
-    // 3. Credit the wallet
-    await _supabase
-        .from('wallets')
-        .update({'balance': currentBalance + amount})
-        .eq('id', walletId);
-
-    // 4. Mark the pending transaction as completed, or insert a new one
-    if (existing != null) {
-      await _supabase
-          .from('transactions')
-          .update({'status': 'completed'})
-          .eq('id', existing['id'] as String);
-    } else {
-      await _supabase.from('transactions').insert({
-        'wallet_id': walletId,
-        'amount': amount,
-        'reference_type': 'deposit',
-        'reference_id': orderId,
-        'status': 'completed',
-      });
-    }
+    // Call the secure RPC to confirm Kashier payment
+    // The RPC should check if the orderId was already processed to avoid double-crediting
+    await _supabase.rpc(
+      'confirm_kashier_payment',
+      params: {'p_user_id': userId, 'p_order_id': orderId, 'p_amount': amount},
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -143,23 +105,14 @@ class WalletRepository {
     required String walletId,
     required double amount,
   }) async {
-    final wallet = await _supabase
-        .from('wallets')
-        .select('balance')
-        .eq('id', walletId)
-        .single();
-    final newBalance = (wallet['balance'] as num).toDouble() + amount;
-
-    await _supabase
-        .from('wallets')
-        .update({'balance': newBalance})
-        .eq('id', walletId);
-
-    await _supabase.from('transactions').insert({
-      'wallet_id': walletId,
-      'amount': amount,
-      'reference_type': 'manual_deposit',
-      'admin_id': adminId,
-    });
+    // Call the secure admin deposit RPC
+    await _supabase.rpc(
+      'admin_deposit',
+      params: {
+        'p_admin_id': adminId,
+        'p_wallet_id': walletId,
+        'p_amount': amount,
+      },
+    );
   }
 }

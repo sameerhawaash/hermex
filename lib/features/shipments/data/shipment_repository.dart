@@ -15,12 +15,13 @@ class ShipmentRepository {
     required String merchantId,
     required String productName,
     double? weightKg,
+    String? imageUrl,
     required String pickupAddress,
     required String deliveryAddress,
     required double shipmentPrice,
     required double deliveryFee,
   }) async {
-    await _supabase.from('shipments').insert({
+    final data = {
       'merchant_id': merchantId,
       'product_name': productName,
       'weight_kg': weightKg,
@@ -29,7 +30,11 @@ class ShipmentRepository {
       'shipment_price': shipmentPrice,
       'delivery_fee': deliveryFee,
       'status': 'pending',
-    });
+    };
+    if (imageUrl != null) {
+      data['image_url'] = imageUrl;
+    }
+    await _supabase.from('shipments').insert(data);
   }
 
   // Courier accepts a shipment via RPC Escrow Wallet System

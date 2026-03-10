@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../data/shipment_repository.dart';
 
@@ -21,7 +24,62 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
   final _detailsController = TextEditingController(); // Aesthetic field
   final _weightController = TextEditingController(); // Aesthetic field
 
+  final ImagePicker _picker = ImagePicker();
+  String? _uploadedImageUrl;
+  bool _isUploadingImage = false;
   bool _isLoading = false;
+
+  Future<void> _pickAndUploadImage() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+      );
+      if (image == null) return;
+
+      setState(() => _isUploadingImage = true);
+
+      final fileExt = image.path.split('.').last;
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_shipment.$fileExt';
+      final path = '$fileName';
+
+      if (kIsWeb) {
+        final bytes = await image.readAsBytes();
+        await Supabase.instance.client.storage
+            .from('shipments')
+            .uploadBinary(path, bytes);
+      } else {
+        await Supabase.instance.client.storage
+            .from('shipments')
+            .upload(path, File(image.path));
+      }
+
+      final imageUrl = Supabase.instance.client.storage
+          .from('shipments')
+          .getPublicUrl(path);
+
+      setState(() => _uploadedImageUrl = imageUrl);
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('تم رفع الصورة بنجاح!')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'فشل في رفع الصورة: تأكد من وجود Bucket باسم shipments. ${e.toString()}',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingImage = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -82,6 +140,7 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
         merchantId: merchantId,
         productName: productName,
         weightKg: weight,
+        imageUrl: _uploadedImageUrl,
         pickupAddress: pickup,
         deliveryAddress: delivery,
         shipmentPrice: price,
@@ -163,6 +222,8 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
                       controller: _detailsController,
                       maxLines: 3,
                     ),
+                    const SizedBox(height: 16),
+                    _buildImageUploader(),
                     const SizedBox(height: 24),
                     Row(
                       children: [
@@ -246,6 +307,60 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildImageUploader() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              'صورة الشحنة (اختياري)',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(width: 8),
+            Icon(Icons.image_outlined, color: AppColors.orangeButton, size: 20),
+          ],
+        ),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: _isUploadingImage ? null : _pickAndUploadImage,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            height: 120,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
+              borderRadius: BorderRadius.circular(8),
+              color: _uploadedImageUrl != null ? null : Colors.grey.shade50,
+              image: _uploadedImageUrl != null
+                  ? DecorationImage(
+                      image: NetworkImage(_uploadedImageUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: _isUploadingImage
+                ? const Center(child: CircularProgressIndicator())
+                : _uploadedImageUrl == null
+                ? const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
+                      SizedBox(height: 8),
+                      Text(
+                        'اضغط لإضافة صورة',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
+                  )
+                : null,
+          ),
+        ),
+      ],
     );
   }
 
