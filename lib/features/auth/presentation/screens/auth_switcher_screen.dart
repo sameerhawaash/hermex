@@ -155,24 +155,29 @@ class _AuthSwitcherScreenState extends ConsumerState<AuthSwitcherScreen> {
                   child: Column(
                     children: [
                       // Logo
-                      Image.asset(
-                        'assets/images/LOGO1.png',
-                        height: 60,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Text(
-                              'TayaRak',
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.orangeButton,
-                              ),
-                            ),
+                      Builder(
+                        builder: (context) {
+                          final isRtl = Directionality.of(context) == TextDirection.rtl;
+                          return Image.asset(
+                            isRtl ? 'assets/images/logo_ar.png' : 'assets/images/logo_en.png',
+                            height: 60,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Text(
+                                  'Forreira',
+                                  style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.orangeButton,
+                                  ),
+                                ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 40),
 
                       // App Tagline (Optional but fits the design style)
                       const Text(
-                        'أهلاً بك في طيارك\nمنصة الشحن الأسهل في مصر',
+                        'أهلاً بك في فوريرة\nمنصة الشحن الأسهل في مصر',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 18,

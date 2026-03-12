@@ -57,28 +57,49 @@ class ShipmentRepository {
   }
 
   // Streams for real-time tracking
-  Stream<List<Map<String, dynamic>>> getMerchantShipments(String merchantId) {
-    return _supabase
-        .from('shipments')
-        .stream(primaryKey: ['id'])
-        .eq('merchant_id', merchantId)
-        .order('created_at', ascending: false)
-        .map((data) => data);
+  Stream<List<Map<String, dynamic>>> getMerchantShipments(
+    String merchantId,
+  ) async* {
+    while (true) {
+      try {
+        final data = await _supabase
+            .from('shipments')
+            .select('id, *')
+            .eq('merchant_id', merchantId)
+            .order('created_at', ascending: false);
+        yield data;
+      } catch (_) {}
+      await Future.delayed(const Duration(seconds: 5));
+    }
   }
 
-  Stream<List<Map<String, dynamic>>> getCourierShipments(String courierId) {
-    return _supabase
-        .from('shipments')
-        .stream(primaryKey: ['id'])
-        .eq('courier_id', courierId)
-        .order('created_at', ascending: false);
+  Stream<List<Map<String, dynamic>>> getCourierShipments(
+    String courierId,
+  ) async* {
+    while (true) {
+      try {
+        final data = await _supabase
+            .from('shipments')
+            .select('id, *')
+            .eq('courier_id', courierId)
+            .order('created_at', ascending: false);
+        yield data;
+      } catch (_) {}
+      await Future.delayed(const Duration(seconds: 5));
+    }
   }
 
-  Stream<List<Map<String, dynamic>>> getAvailableShipments() {
-    return _supabase
-        .from('shipments')
-        .stream(primaryKey: ['id'])
-        .eq('status', 'pending')
-        .order('created_at', ascending: false);
+  Stream<List<Map<String, dynamic>>> getAvailableShipments() async* {
+    while (true) {
+      try {
+        final data = await _supabase
+            .from('shipments')
+            .select('id, *')
+            .eq('status', 'pending')
+            .order('created_at', ascending: false);
+        yield data;
+      } catch (_) {}
+      await Future.delayed(const Duration(seconds: 5));
+    }
   }
 }

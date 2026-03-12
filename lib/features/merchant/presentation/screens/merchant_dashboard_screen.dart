@@ -22,7 +22,17 @@ class _MerchantDashboardScreenState
       drawer: const ProfileDrawer(),
       backgroundColor: AppColors.skyBlueBg,
       appBar: AppBar(
-        title: const Text('لوحة تحكم التاجر'),
+        centerTitle: false,
+        title: Builder(
+          builder: (context) {
+            final isRtl = Directionality.of(context) == TextDirection.rtl;
+            return Image.asset(
+              isRtl ? 'assets/images/logo_ar.png' : 'assets/images/logo_en.png',
+              height: 56, // Increased height
+              fit: BoxFit.contain,
+            );
+          },
+        ),
         backgroundColor: AppColors.orangeButton,
         actions: [
           IconButton(

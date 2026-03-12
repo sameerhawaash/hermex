@@ -143,16 +143,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                'assets/images/LOGO1.png',
-                height: 120, // Increased height
-                fit: BoxFit.contain, // Added explicit fit
-                errorBuilder: (context, error, stackTrace) {
-                  debugPrint('Error loading logo: $error');
-                  return const Icon(
-                    Icons.lock_outline,
-                    size: 80,
-                    color: AppColors.orangeButton,
+              Builder(
+                builder: (context) {
+                  final isRtl = Directionality.of(context) == TextDirection.rtl;
+                  return Image.asset(
+                    isRtl ? 'assets/images/logo_ar.png' : 'assets/images/logo_en.png',
+                    height: 120,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      debugPrint('Error loading logo: $error');
+                      return const Icon(
+                        Icons.lock_outline,
+                        size: 80,
+                        color: AppColors.orangeButton,
+                      );
+                    },
                   );
                 },
               ),

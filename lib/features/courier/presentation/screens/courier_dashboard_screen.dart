@@ -21,9 +21,31 @@ class _CourierDashboardScreenState
     extends ConsumerState<CourierDashboardScreen> {
   final Set<String> _processingIds = {};
 
-  Future<void> _acceptShipment(String shipmentId) async {
+  Future<void> _acceptShipment(String shipmentId, double shipmentPrice) async {
     final user = ref.read(userProfileProvider).value;
     if (user == null) return;
+    
+    // Check available balance
+    final walletAsync = ref.read(currentWalletProvider);
+    double availableBalance = 0;
+    if (walletAsync is AsyncData) {
+      availableBalance = (walletAsync.value?['balance'] as num?)?.toDouble() ?? 0;
+    }
+
+    if (availableBalance < shipmentPrice) {
+      final double remaining = shipmentPrice - availableBalance;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'رصيدك لا يسمح، من فضلك قم بشحن محفظتك بمبلغ ${remaining.toStringAsFixed(2)} ج.م لإكمال ثمن الشحنة.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _processingIds.add(shipmentId));
     try {
       final repo = ref.read(shipmentRepositoryProvider);
@@ -116,7 +138,14 @@ class _CourierDashboardScreenState
       }
     }
 
-    double totalBalance = availableBalance + lockedGuarantee;
+    // The database now deducts the guarantee immediately upon acceptance.
+    // So the 'availableBalance' is the actual withdrawable balance.
+    // We can still show 'lockedGuarantee' for informational purposes,
+    // but the main 'الإجمالي' (Total) should just be the available balance now,
+    // or if the user means "Total wealth = available + locked", we can keep it.
+    // However, the user asked to "show only the current balance after deduction".
+    double totalBalance = availableBalance < 0 ? 0 : availableBalance; // Prevent showing negative in main card if desired, but actually negative means debt.
+    // Wait, the user's screenshot showed "-12000" which means they accepted a shipment before we added the SQL guard.
 
     return Scaffold(
       drawer: const ProfileDrawer(),
@@ -128,13 +157,15 @@ class _CourierDashboardScreenState
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'لوحة تحكم الطيار',
-              style: TextStyle(
-                color: Color(0xFFF39C12),
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-              ),
+            Builder(
+              builder: (context) {
+                final isRtl = Directionality.of(context) == TextDirection.rtl;
+                return Image.asset(
+                  isRtl ? 'assets/images/logo_ar.png' : 'assets/images/logo_en.png',
+                  height: 56, // Increased height
+                  fit: BoxFit.contain,
+                );
+              },
             ),
             Row(
               children: [
@@ -173,15 +204,11 @@ class _CourierDashboardScreenState
                   _buildTopCard(
                     iconBgColor: const Color(0xFF1F487E),
                     iconData: Icons.account_balance_wallet_outlined,
-                    title: 'الإجمالي:',
+                    title: 'الرصيد المتاح:',
                     mainValue: '${totalBalance.toStringAsFixed(2)} ج.م',
                     buttonText: 'سحب الرصيد المتاح',
                     onButtonTap: () => context.push('/courier/wallet'),
                     footerLines: [
-                      (
-                        'رصيد السحب:',
-                        '${availableBalance.toStringAsFixed(2)} ج.م',
-                      ),
                       (
                         'مبلغ محجوز (الضمان):',
                         '${lockedGuarantee.toStringAsFixed(2)} ج.م',
@@ -541,7 +568,8 @@ class _CourierDashboardScreenState
     final fee = s['delivery_fee'] ?? 0;
     final weight = s['weight_kg']?.toString() ?? '-';
     final imageUrl = s['image_url'] as String?;
-    final isProcessing = _processingIds.contains(shipmentId);
+    final isProcessing =
+        shipmentId.isNotEmpty && _processingIds.contains(shipmentId);
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
@@ -646,11 +674,11 @@ class _CourierDashboardScreenState
                   width: double.infinity,
                   height: 36,
                   child: ElevatedButton(
-                    onPressed: isProcessing
+                    onPressed: isProcessing || shipmentId.isEmpty
                         ? null
-                        : () => _acceptShipment(shipmentId),
+                        : () => _acceptShipment(shipmentId, (price as num).toDouble()),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2ECC71),
+                      backgroundColor: const Color(0xFFF39C12),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -696,7 +724,8 @@ class _CourierDashboardScreenState
     final to = s['delivery_address'] ?? '';
     final price = s['shipment_price'] ?? 0;
     final status = s['status'] as String? ?? '';
-    final isProcessing = _processingIds.contains(shipmentId);
+    final isProcessing =
+        shipmentId.isNotEmpty && _processingIds.contains(shipmentId);
     final canDeliver = status == 'accepted' || status == 'in_transit';
 
     return Container(
@@ -740,25 +769,38 @@ class _CourierDashboardScreenState
           ),
           Expanded(
             flex: 1,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  _getStatusText(status),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(status).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
                     color: _getStatusColor(status),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    width: 1.2,
                   ),
                 ),
-                if (status == 'delivered')
-                  const Text(
-                    '(انتظار تأكيد التاجر)',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey, fontSize: 10),
-                  ),
-              ],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _getStatusText(status),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _getStatusColor(status),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                    if (status == 'delivered')
+                      const Text(
+                        '(انتظار التاجر)',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey, fontSize: 9),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
           Expanded(

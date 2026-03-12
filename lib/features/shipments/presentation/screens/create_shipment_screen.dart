@@ -170,7 +170,7 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
       backgroundColor: AppColors.skyBlueBg,
       appBar: AppBar(
         title: const Text(
-          'طيارك',
+          'فوريرة',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -326,40 +326,69 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
           ],
         ),
         const SizedBox(height: 8),
-        InkWell(
-          onTap: _isUploadingImage ? null : _pickAndUploadImage,
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            height: 120,
+        if (_isUploadingImage)
+          const Center(child: CircularProgressIndicator())
+        else if (_uploadedImageUrl != null)
+          Stack(
+            children: [
+              Container(
+                height: 120,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  image: DecorationImage(
+                    image: NetworkImage(_uploadedImageUrl!),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                left: 8,
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _uploadedImageUrl = null;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        else
+          SizedBox(
             width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
-              borderRadius: BorderRadius.circular(8),
-              color: _uploadedImageUrl != null ? null : Colors.grey.shade50,
-              image: _uploadedImageUrl != null
-                  ? DecorationImage(
-                      image: NetworkImage(_uploadedImageUrl!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.orangeButton,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                side: const BorderSide(color: AppColors.orangeButton),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                elevation: 0,
+              ),
+              onPressed: _pickAndUploadImage,
+              icon: const Icon(Icons.add_a_photo),
+              label: const Text(
+                'إضافة صورة للشحنة',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
-            child: _isUploadingImage
-                ? const Center(child: CircularProgressIndicator())
-                : _uploadedImageUrl == null
-                ? const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
-                      SizedBox(height: 8),
-                      Text(
-                        'اضغط لإضافة صورة',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                  )
-                : null,
           ),
-        ),
       ],
     );
   }

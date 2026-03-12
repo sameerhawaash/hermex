@@ -23,14 +23,19 @@ class AppDrawer extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(
-                  'assets/images/LOGO1.png',
-                  height: 60,
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                    Icons.person_pin,
-                    size: 60,
-                    color: Colors.white,
-                  ),
+                Builder(
+                  builder: (context) {
+                    final isRtl = Directionality.of(context) == TextDirection.rtl;
+                    return Image.asset(
+                      isRtl ? 'assets/images/logo_ar.png' : 'assets/images/logo_en.png',
+                      height: 60,
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.person_pin,
+                        size: 60,
+                        color: Colors.white,
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 12),
                 Text(

@@ -196,7 +196,7 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'طيارك',
+                    'فوريرة',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
