@@ -154,24 +154,40 @@ class _AuthSwitcherScreenState extends ConsumerState<AuthSwitcherScreen> {
                   padding: const EdgeInsets.all(24.0),
                   child: Column(
                     children: [
-                      // Logo
-                      Builder(
-                        builder: (context) {
-                          final isRtl = Directionality.of(context) == TextDirection.rtl;
-                          return Image.asset(
-                            isRtl ? 'assets/images/logo_ar.png' : 'assets/images/logo_en.png',
-                            height: 60,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Text(
-                                  'Forreira',
-                                  style: TextStyle(
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.orangeButton,
-                                  ),
+                      // Logo and Language Switcher
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.language, color: AppColors.orangeButton),
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('تغيير اللغة قيد التطوير'),
                                 ),
-                          );
-                        },
+                              );
+                            },
+                          ),
+                          Builder(
+                            builder: (context) {
+                              final isRtl = Directionality.of(context) == TextDirection.rtl;
+                              return Image.asset(
+                                isRtl ? 'assets/images/logo_ar.png' : 'assets/images/logo_en.png',
+                                height: 60,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Text(
+                                      'Forreira',
+                                      style: TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.orangeButton,
+                                      ),
+                                    ),
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 48), // Balance the icon button for centering
+                        ],
                       ),
                       const SizedBox(height: 40),
 

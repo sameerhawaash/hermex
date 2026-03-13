@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "tayarak_app" "\0"
+            VALUE "FileDescription", "Forrira" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "tayarak_app" "\0"
+            VALUE "InternalName", "Forrira" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
             VALUE "OriginalFilename", "tayarak_app.exe" "\0"
-            VALUE "ProductName", "tayarak_app" "\0"
+            VALUE "ProductName", "Forrira" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
