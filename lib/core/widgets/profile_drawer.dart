@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'dart:ui' as ui;
 import '../theme/app_colors.dart';
 import '../../features/auth/data/auth_provider.dart';
 import '../../features/auth/data/auth_repository.dart';
@@ -74,14 +76,14 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('تم تحديث الصورة بنجاح!')));
+        ).showSnackBar(SnackBar(content: Text('drawer.alerts.image_upload_success'.tr())));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'فشل في رفع الصورة: تأكد من وجود Bucket باسم avatars. ${e.toString()}',
+              'drawer.alerts.image_upload_fail'.tr(namedArgs: {'error': e.toString()}),
             ),
           ),
         );
@@ -106,15 +108,15 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              title: const Text('تعديل البيانات', textAlign: TextAlign.right),
+              title: Text('drawer.edit_profile'.tr(), textAlign: TextAlign.right),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
                     controller: nameController,
                     textAlign: TextAlign.right,
-                    decoration: const InputDecoration(
-                      labelText: 'الاسم بالكامل',
+                    decoration: InputDecoration(
+                      labelText: 'drawer.full_name'.tr(),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -122,14 +124,14 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
                     controller: phoneController,
                     textAlign: TextAlign.right,
                     keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(labelText: 'رقم الهاتف'),
+                    decoration: InputDecoration(labelText: 'drawer.phone'.tr()),
                   ),
                 ],
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('إلغاء'),
+                  child: Text('auth.cancel'.tr()),
                 ),
                 ElevatedButton(
                   onPressed: isLoading
@@ -166,7 +168,7 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('حفظ'),
+                      : Text('drawer.save'.tr()),
                 ),
               ],
             );
@@ -195,27 +197,18 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'فوريرة',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Builder(
+                    builder: (context) {
+                      final isRtl = Directionality.of(context) == ui.TextDirection.rtl;
+                      return Image.asset(
+                        isRtl ? 'assets/images/logo_ar1.png' : 'assets/images/logo_en1.png',
+                        height: 80, // Increased height per user request
+                        fit: BoxFit.contain,
+                      );
+                    },
                   ),
                   Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.language, color: Colors.white),
-                        onPressed: () {
-                          // Simple alert since complete localization isn't implemented
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('تغيير اللغة قيد التطوير'),
-                            ),
-                          );
-                        },
-                      ),
                       IconButton(
                         icon: const Icon(Icons.arrow_forward, color: AppColors.orangeButton),
                         onPressed: () => Navigator.pop(context),
@@ -251,7 +244,7 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
                     child: userProfileAsync.when(
                       data: (profile) {
                         if (profile == null) {
-                          return const Center(child: Text('رجاءً سجل الدخول'));
+                          return Center(child: Text('drawer.please_login'.tr()));
                         }
 
                         final role = profile['role'];
@@ -365,7 +358,7 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
     bool isCourier,
     AsyncValue<List<Map<String, dynamic>>> shipmentsAsync,
   ) {
-    final fullName = profile['full_name'] ?? 'مستخدم غير معروف';
+    final fullName = profile['full_name'] ?? 'drawer.unknown_user'.tr();
     final phone = profile['phone'] ?? '+20 000 000 0000';
     final email = profile['email'] ?? '';
 
@@ -392,7 +385,7 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
                 }
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, stack) => const Text('خطأ في جلب بيانات الشحنات'),
+              error: (err, stack) => Text('drawer.alerts.fetch_error'.tr()),
             ),
           ),
         ],
@@ -440,9 +433,9 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'رصيد المحفظة',
-                              style: TextStyle(
+                            Text(
+                              'drawer.courier_stats.wallet_balance'.tr(),
+                              style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 13,
                               ),
@@ -479,7 +472,7 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
 
         // Stats Cards
         _buildStatCard(
-          title: 'شحنات تم تسليمها',
+          title: 'drawer.courier_stats.delivered'.tr(),
           count: delivered,
           icon: Icons.check_circle,
           iconColor: Colors.green,
@@ -487,7 +480,7 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
         ),
         const SizedBox(height: 12),
         _buildStatCard(
-          title: 'جاري توصيلها',
+          title: 'drawer.courier_stats.in_transit'.tr(),
           count: inTransit,
           icon: Icons.local_shipping,
           iconColor: Colors.blue,
@@ -495,7 +488,7 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
         ),
         const SizedBox(height: 12),
         _buildStatCard(
-          title: 'مرتجعة',
+          title: 'drawer.courier_stats.returned'.tr(),
           count: rejected,
           icon: Icons.cancel,
           iconColor: Colors.red,
@@ -520,7 +513,7 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
       padding: EdgeInsets.zero,
       children: [
         _buildStatCard(
-          title: 'الشحنات المقبولة',
+          title: 'drawer.merchant_stats.accepted'.tr(),
           count: accepted,
           icon: Icons.check_circle,
           iconColor: Colors.green,
@@ -528,7 +521,7 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
         ),
         const SizedBox(height: 12),
         _buildStatCard(
-          title: 'بانتظار التسليم',
+          title: 'drawer.merchant_stats.pending'.tr(),
           count: pending,
           icon: Icons.access_time_filled,
           iconColor: Colors.orange,
@@ -536,7 +529,7 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
         ),
         const SizedBox(height: 12),
         _buildStatCard(
-          title: 'تم التسليم أو مرتجع',
+          title: 'drawer.merchant_stats.delivered_or_returned'.tr(),
           count: delivered,
           icon: Icons.sync,
           iconColor: Colors.deepOrange,
@@ -557,9 +550,9 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
             ),
             onPressed: () => Navigator.pop(context),
             icon: const Icon(Icons.fact_check, color: Colors.white),
-            label: const Text(
-              'تأكيد التسليم',
-              style: TextStyle(
+            label: Text(
+              'drawer.merchant_stats.confirm_delivery'.tr(),
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -579,9 +572,9 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
         TextButton.icon(
           onPressed: () => _showEditDialog(profile),
           icon: const Icon(Icons.edit, color: AppColors.lightBlue),
-          label: const Text(
-            'تعديل البيانات',
-            style: TextStyle(
+          label: Text(
+            'drawer.edit_profile'.tr(),
+            style: const TextStyle(
               color: AppColors.lightBlue,
               fontWeight: FontWeight.bold,
               fontSize: 16,
@@ -596,9 +589,9 @@ class _ProfileDrawerState extends ConsumerState<ProfileDrawer> {
             router.go('/');
           },
           icon: const Icon(Icons.logout, color: Colors.red),
-          label: const Text(
-            'تسجيل الخروج',
-            style: TextStyle(
+          label: Text(
+            'drawer.logout'.tr(),
+            style: const TextStyle(
               color: Colors.red,
               fontWeight: FontWeight.bold,
               fontSize: 16,

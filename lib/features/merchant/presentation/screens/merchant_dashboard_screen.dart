@@ -5,6 +5,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../auth/providers/auth_provider.dart';
 import '../../../shipments/presentation/providers/shipment_providers.dart';
 import '../../../../core/widgets/profile_drawer.dart';
+import 'package:easy_localization/easy_localization.dart';
+import 'dart:ui' as ui;
 
 class MerchantDashboardScreen extends ConsumerStatefulWidget {
   const MerchantDashboardScreen({super.key});
@@ -25,10 +27,10 @@ class _MerchantDashboardScreenState
         centerTitle: false,
         title: Builder(
           builder: (context) {
-            final isRtl = Directionality.of(context) == TextDirection.rtl;
+            final isRtl = Directionality.of(context) == ui.TextDirection.rtl;
             return Image.asset(
-              isRtl ? 'assets/images/logo_ar.png' : 'assets/images/logo_en.png',
-              height: 56, // Increased height
+              isRtl ? 'assets/images/logo_ar1.png' : 'assets/images/logo_en1.png',
+              height: 100, // Increased height per user request
               fit: BoxFit.contain,
             );
           },
@@ -88,31 +90,31 @@ class _MerchantDashboardScreenState
                           childAspectRatio: 2.5,
                           children: [
                             _buildStatCard(
-                              'الإجمالي',
+                              'merchant.total'.tr(),
                               total,
                               Icons.inventory_2,
                               Colors.purple,
                             ),
                             _buildStatCard(
-                              'مرفوضة',
+                              'merchant.rejected'.tr(),
                               rejected,
                               Icons.error_outline,
                               Colors.red,
                             ),
                             _buildStatCard(
-                              'تم التسليم',
+                              'merchant.delivered'.tr(),
                               delivered,
                               Icons.check_circle_outline,
                               Colors.green,
                             ),
                             _buildStatCard(
-                              'جاري التوصيل',
+                              'merchant.in_transit'.tr(),
                               inTransit,
                               Icons.local_shipping_outlined,
                               Colors.blue,
                             ),
                             _buildStatCard(
-                              'قيد الانتظار',
+                              'merchant.pending'.tr(),
                               pending,
                               Icons.schedule,
                               Colors.orange,
@@ -134,21 +136,21 @@ class _MerchantDashboardScreenState
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'شحناتي',
-                              style: TextStyle(
+                            Text(
+                              'merchant.my_shipments'.tr(),
+                              style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             const SizedBox(height: 16),
                             if (shipments.isEmpty)
-                              const Center(
+                               Center(
                                 child: Padding(
-                                  padding: EdgeInsets.all(32.0),
+                                  padding: const EdgeInsets.all(32.0),
                                   child: Text(
-                                    'لا توجد لديك شحنات حالية.',
-                                    style: TextStyle(color: Colors.grey),
+                                    'merchant.no_shipments'.tr(),
+                                    style: const TextStyle(color: Colors.grey),
                                   ),
                                 ),
                               )
@@ -156,13 +158,13 @@ class _MerchantDashboardScreenState
                               SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
                                 child: DataTable(
-                                  columns: const [
-                                    DataColumn(label: Text('رقم التتبع')),
-                                    DataColumn(label: Text('من')),
-                                    DataColumn(label: Text('إلى')),
-                                    DataColumn(label: Text('سعر الشحنة')),
-                                    DataColumn(label: Text('سعر التوصيل')),
-                                    DataColumn(label: Text('الحالة')),
+                                  columns: [
+                                    DataColumn(label: Text('merchant.tracking'.tr())),
+                                    DataColumn(label: Text('merchant.from'.tr())),
+                                    DataColumn(label: Text('merchant.to'.tr())),
+                                    DataColumn(label: Text('merchant.shipment_price'.tr())),
+                                    DataColumn(label: Text('merchant.delivery_fee'.tr())),
+                                    DataColumn(label: Text('merchant.status'.tr())),
                                   ],
                                   rows: shipments.asMap().entries.map((entry) {
                                     final index = entry.key;
@@ -189,11 +191,11 @@ class _MerchantDashboardScreenState
                                           Text(s['delivery_address'] ?? ''),
                                         ),
                                         DataCell(
-                                          Text('${s['shipment_price']} ج.م'),
+                                          Text('${s['shipment_price']} ${'merchant.currency'.tr()}'),
                                         ),
                                         DataCell(
                                           Text(
-                                            '${s['delivery_fee']} ج.م',
+                                            '${s['delivery_fee']} ${'merchant.currency'.tr()}',
                                             style: const TextStyle(
                                               color: Colors.green,
                                             ),
@@ -231,7 +233,7 @@ class _MerchantDashboardScreenState
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, stack) => Center(child: Text('حدث خطأ: $error')),
+            error: (error, stack) => Center(child: Text('merchant.error'.tr(namedArgs: {'error': error.toString()}))),
           );
         },
       ),
@@ -241,7 +243,7 @@ class _MerchantDashboardScreenState
         },
         backgroundColor: AppColors.orangeButton,
         icon: const Icon(Icons.add),
-        label: const Text('إنشاء شحنة'),
+        label: Text('merchant.create_shipment'.tr()),
       ),
     );
   }
@@ -296,15 +298,15 @@ class _MerchantDashboardScreenState
   String _translateStatus(String status) {
     switch (status) {
       case 'pending':
-        return 'قيد الانتظار';
+        return 'shipment_status.pending'.tr();
       case 'accepted':
-        return 'تم القبول';
+        return 'shipment_status.accepted'.tr();
       case 'in_transit':
-        return 'في الطريق';
+        return 'shipment_status.in_transit'.tr();
       case 'delivered':
-        return 'تم التسليم';
+        return 'shipment_status.delivered'.tr();
       case 'rejected':
-        return 'مرفوضة';
+        return 'shipment_status.rejected'.tr();
       default:
         return status;
     }

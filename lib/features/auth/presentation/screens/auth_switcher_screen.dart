@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/providers/locale_provider.dart';
 import '../../services/auth_service.dart';
 import '../../../../core/widgets/app_drawer.dart';
 
@@ -25,7 +28,6 @@ class _AuthSwitcherScreenState extends ConsumerState<AuthSwitcherScreen> {
   }
 
   void _setupAuthListener() {
-    // 1. Check if we already have a session (e.g. returning from OAuth browser popup)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final session = Supabase.instance.client.auth.currentSession;
       if (session != null) {
@@ -33,14 +35,11 @@ class _AuthSwitcherScreenState extends ConsumerState<AuthSwitcherScreen> {
       }
     });
 
-    // 2. Listen to future auth events
     _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange
         .listen((data) async {
           if (_isRedirecting || !mounted) return;
-
           final session = data.session;
           final event = data.event;
-
           if (session != null && event == AuthChangeEvent.signedIn) {
             _handleSession(session);
           }
@@ -55,11 +54,9 @@ class _AuthSwitcherScreenState extends ConsumerState<AuthSwitcherScreen> {
     });
 
     try {
-      // Ensure user record is synced (useful for Google OAuth creating new users)
       final authService = SupabaseAuthService();
       await authService.syncUserRecord(session.user);
 
-      // Fetch User Profile to get role
       final response = await Supabase.instance.client
           .from('users')
           .select('role')
@@ -76,36 +73,26 @@ class _AuthSwitcherScreenState extends ConsumerState<AuthSwitcherScreen> {
           } else if (role == 'admin' || role == 'owner') {
             context.go('/admin/dashboard');
           } else {
-            // Unknown role, stay on auth switcher and show an error
-            setState(() {
-              _isRedirecting = false;
-            });
+            setState(() => _isRedirecting = false);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                  'دور المستخدم غير معروف: $role',
-                  textAlign: TextAlign.right,
-                ),
+                content: Text('auth.unknown_role'.tr(namedArgs: {'role': role}),
+                    textAlign: TextAlign.right),
                 backgroundColor: Colors.red,
               ),
             );
           }
         } else {
-          // No user record found somehow, default to merchant dashboard
           context.go('/merchant/dashboard');
         }
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isRedirecting = false;
-        });
+        setState(() => _isRedirecting = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'حدث خطأ أثناء تحميل بيانات الحساب: $e',
-              textAlign: TextAlign.right,
-            ),
+            content: Text('auth.account_load_error'.tr(namedArgs: {'error': e.toString()}),
+                textAlign: TextAlign.right),
             backgroundColor: Colors.red,
           ),
         );
@@ -129,117 +116,141 @@ class _AuthSwitcherScreenState extends ConsumerState<AuthSwitcherScreen> {
       );
     }
 
+    final isRtl = Directionality.of(context) == ui.TextDirection.rtl;
+
     return Scaffold(
       backgroundColor: Colors.white,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final bool isDesktop = constraints.maxWidth > 800;
+      body: Stack(
+        children: [
+          // ── Main scrollable content ──────────────────────────────────
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final bool isDesktop = constraints.maxWidth > 700;
+              final double heroHeight = isDesktop ? 420 : 220;
+              final double contentMaxWidth = isDesktop ? 560.0 : double.infinity;
 
-          Widget bodyContent = SingleChildScrollView(
-            child: Column(
-              children: [
-                // Top Hero Image (Responsive)
-                Container(
-                  width: double.infinity,
-                  height: isDesktop ? 450 : 250,
-                  color: AppColors
-                      .skyBlueBg, // Background color just in case image is smaller
-                  child: Image.asset(
-                    'assets/images/header 1.png',
-                    fit: BoxFit
-                        .contain, // Used contain to prevent cropping and stretching
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    children: [
-                      // Logo and Language Switcher
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Widget content = SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // Hero image
+                    Container(
+                      width: double.infinity,
+                      height: heroHeight,
+                      color: AppColors.skyBlueBg,
+                      child: Image.asset(
+                        'assets/images/header 1.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+
+                    // Content area
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isDesktop ? 40 : 24,
+                        vertical: 24,
+                      ),
+                      child: Column(
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.language, color: AppColors.orangeButton),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('تغيير اللغة قيد التطوير'),
+                          // Logo (centred, language-aware)
+                          Builder(builder: (context) {
+                            return Image.asset(
+                              isRtl
+                                  ? 'assets/images/logo_ar.png'
+                                  : 'assets/images/logo_en.png',
+                              height: isDesktop ? 120 : 90,
+                              errorBuilder: (_, __, ___) => Text(
+                                'Forrira',
+                                style: TextStyle(
+                                  fontSize: isDesktop ? 40 : 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.orangeButton,
                                 ),
-                              );
-                            },
-                          ),
-                          Builder(
-                            builder: (context) {
-                              final isRtl = Directionality.of(context) == TextDirection.rtl;
-                              return Image.asset(
-                                isRtl ? 'assets/images/logo_ar.png' : 'assets/images/logo_en.png',
-                                height: 60,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Text(
-                                      'Forreira',
-                                      style: TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.orangeButton,
-                                      ),
-                                    ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 48), // Balance the icon button for centering
-                        ],
-                      ),
-                      const SizedBox(height: 40),
+                              ),
+                            );
+                          }),
 
-                      // App Tagline (Optional but fits the design style)
-                      const Text(
-                        'أهلاً بك في فوريرة\nمنصة الشحن الأسهل في مصر',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: AppColors.greyText,
-                        ),
-                      ),
+                          SizedBox(height: isDesktop ? 32 : 24),
 
-                      const SizedBox(height: 50),
-
-                      _buildAuthButton(
-                        context: context,
-                        label: 'تسجيل دخول التاجر',
-                        color: AppColors.orangeButton,
-                        onPressed: () => context.push('/login'),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildAuthButton(
-                        context: context,
-                        label: 'تسجيل دخول الطيار',
-                        color: AppColors.lightBlue,
-                        onPressed: () => context.push('/login'),
-                      ),
-                      const SizedBox(height: 32),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          TextButton(
-                            onPressed: () => context.push('/register/merchant'),
-                            child: const Text('إنشاء حساب تاجر'),
+                          // Tagline
+                          Text(
+                            isRtl
+                                ? 'auth.tagline'.tr()
+                                : 'auth.tagline'.tr(),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: isDesktop ? 20 : 16,
+                              color: AppColors.greyText,
+                            ),
                           ),
-                          const VerticalDivider(),
-                          TextButton(
-                            onPressed: () => context.push('/register/courier'),
-                            child: const Text('إنشاء حساب طيار'),
+
+                          SizedBox(height: isDesktop ? 48 : 36),
+
+                          // Auth buttons
+                          _buildAuthButton(
+                            context: context,
+                            label: 'auth.merchant_login'.tr(),
+                            color: AppColors.orangeButton,
+                            onPressed: () => context.push('/login'),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildAuthButton(
+                            context: context,
+                            label: 'auth.courier_login'.tr(),
+                            color: AppColors.lightBlue,
+                            onPressed: () => context.push('/login'),
+                          ),
+
+                          SizedBox(height: isDesktop ? 40 : 28),
+
+                          // Register links
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            children: [
+                              TextButton(
+                                onPressed: () =>
+                                    context.push('/register/merchant'),
+                                child: Text('auth.create_merchant'.tr()),
+                              ),
+                              const SizedBox(
+                                  width: 1,
+                                  height: 24,
+                                  child: VerticalDivider()),
+                              TextButton(
+                                onPressed: () =>
+                                    context.push('/register/courier'),
+                                child: Text('auth.create_courier'.tr()),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
+              );
 
-          return bodyContent;
-        },
+              // On desktop: center content with max width
+              if (isDesktop) {
+                content = Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: contentMaxWidth),
+                    child: content,
+                  ),
+                );
+              }
+
+              return content;
+            },
+          ),
+
+          // ── Language button – floating top corner based on direction ──
+          Positioned(
+            top: 48,
+            right: isRtl ? 16 : null,
+            left: isRtl ? null : 16,
+            child: const _LanguageButton(),
+          ),
+        ],
       ),
     );
   }
@@ -250,22 +261,86 @@ class _AuthSwitcherScreenState extends ConsumerState<AuthSwitcherScreen> {
     required Color color,
     required VoidCallback onPressed,
   }) {
-    return SizedBox(
-      width: 300,
-      height: 55,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    final isDesktop = MediaQuery.of(context).size.width > 700;
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: isDesktop ? 400 : double.infinity,
+        minWidth: isDesktop ? 300 : 0,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: isDesktop ? 60 : 54,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            elevation: 4,
           ),
-          elevation: 4,
+          onPressed: onPressed,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: isDesktop ? 18 : 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
-        onPressed: onPressed,
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
+/// Floating language switcher button
+class _LanguageButton extends ConsumerWidget {
+  const _LanguageButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentLocale = ref.watch(localeProvider);
+    final isAr = currentLocale.languageCode == 'ar';
+
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(30),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            final newLocale =
+                isAr ? const Locale('en') : const Locale('ar');
+            ref.read(localeProvider.notifier).setLocale(newLocale);
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.language, color: AppColors.orangeButton, size: 20),
+                const SizedBox(width: 6),
+                Text(
+                  isAr ? 'EN' : 'عربي',
+                  style: const TextStyle(
+                    color: AppColors.orangeButton,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

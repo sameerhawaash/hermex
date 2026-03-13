@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../data/shipment_repository.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class CreateShipmentScreen extends ConsumerStatefulWidget {
   const CreateShipmentScreen({super.key});
@@ -64,14 +65,14 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('تم رفع الصورة بنجاح!')));
+        ).showSnackBar(SnackBar(content: Text('create_shipment.image_uploaded_success'.tr())));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'فشل في رفع الصورة: تأكد من وجود Bucket باسم shipments. ${e.toString()}',
+              'create_shipment.image_upload_failed'.tr(namedArgs: {'error': e.toString()}),
             ),
           ),
         );
@@ -106,7 +107,7 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
         priceStr.isEmpty ||
         feeStr.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء تعبئة جميع الحقول الأساسية')),
+        SnackBar(content: Text('create_shipment.fill_required_fields'.tr())),
       );
       return;
     }
@@ -117,8 +118,8 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
 
     if (price == null || fee == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('الرجاء إدخال قيم رقمية صحيحة للسعر والرسوم'),
+        SnackBar(
+          content: Text('create_shipment.invalid_numeric_values'.tr()),
         ),
       );
       return;
@@ -130,7 +131,7 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
       final currentUser = Supabase.instance.client.auth.currentUser;
 
       if (currentUser == null) {
-        throw Exception('غير مصرح لك بالدخول، يرجى تسجيل الدخول مرة أخرى.');
+        throw Exception('create_shipment.unauthorized'.tr());
       }
 
       final merchantId = currentUser.id;
@@ -149,7 +150,7 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم إضافة طلب الشحن بنجاح')),
+          SnackBar(content: Text('create_shipment.shipment_added_success'.tr())),
         );
         context.pop();
       }
@@ -157,7 +158,7 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('فشل الإضافة: $e')));
+        ).showSnackBar(SnackBar(content: Text('create_shipment.shipment_add_failed'.tr(namedArgs: {'error': e.toString()}))));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -169,9 +170,9 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
     return Scaffold(
       backgroundColor: AppColors.skyBlueBg,
       appBar: AppBar(
-        title: const Text(
-          'فوريرة',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          'app_name'.tr(),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: AppColors.orangeButton,
@@ -197,8 +198,8 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
                       children: [
                         Expanded(
                           child: _buildInputField(
-                            label: 'من (عنوان الاستلام)',
-                            hint: 'مثال: مدينة نصر',
+                            label: 'create_shipment.pickup_address'.tr(),
+                            hint: 'create_shipment.pickup_hint'.tr(),
                             icon: Icons.location_on_outlined,
                             controller: _pickupAddressController,
                           ),
@@ -206,8 +207,8 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildInputField(
-                            label: 'إلى (عنوان التسليم)',
-                            hint: 'مثال: طنطا',
+                            label: 'create_shipment.delivery_address'.tr(),
+                            hint: 'create_shipment.delivery_hint'.tr(),
                             icon: Icons.map_outlined,
                             controller: _deliveryAddressController,
                           ),
@@ -216,8 +217,8 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
                     ),
                     const SizedBox(height: 24),
                     _buildInputField(
-                      label: 'وصف البضائع',
-                      hint: 'مثال: قطع غيار سيارة، ملابس، إلخ...',
+                      label: 'create_shipment.goods_description'.tr(),
+                      hint: 'create_shipment.goods_hint'.tr(),
                       icon: Icons.inventory_2_outlined,
                       controller: _detailsController,
                       maxLines: 3,
@@ -229,7 +230,7 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
                       children: [
                         Expanded(
                           child: _buildInputField(
-                            label: 'الوزن (كغ)',
+                            label: 'create_shipment.weight'.tr(),
                             hint: '0.00',
                             icon: Icons.scale_outlined,
                             controller: _weightController,
@@ -248,25 +249,25 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
                       children: [
                         Expanded(
                           child: _buildInputField(
-                            label: 'سعر الشحنة (جنيه مصري)',
+                            label: 'create_shipment.shipment_price'.tr(),
                             hint: '50.00',
                             icon: Icons.attach_money,
                             controller: _shipmentPriceController,
                             keyboardType: TextInputType.number,
-                            helperText: 'السعر الذي يحدده التاجر للشحنة',
+                            helperText: 'create_shipment.shipment_price_helper'.tr(),
                           ),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
                           child: _buildInputField(
-                            label: 'سعر التوصيل (جنيه مصري)',
+                            label: 'create_shipment.delivery_fee'.tr(),
                             hint: '5.00',
                             icon: Icons.local_shipping_outlined,
                             iconColor: Colors.green,
                             borderColor: Colors.green.shade200,
                             controller: _deliveryFeeController,
                             keyboardType: TextInputType.number,
-                            helperText: 'أجرة توصيل الشحنة (الطيار يحصل عليها)',
+                            helperText: 'create_shipment.delivery_fee_helper'.tr(),
                           ),
                         ),
                       ],
@@ -293,7 +294,7 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
                             )
                           : const Icon(Icons.send),
                       label: Text(
-                        _isLoading ? 'جاري الإنشاء...' : 'إنشاء الشحنة',
+                        _isLoading ? 'create_shipment.creating_shipment'.tr() : 'create_shipment.create_shipment_btn'.tr(),
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -314,15 +315,15 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Text(
-              'صورة الشحنة (اختياري)',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              'create_shipment.image_optional'.tr(),
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            SizedBox(width: 8),
-            Icon(Icons.image_outlined, color: AppColors.orangeButton, size: 20),
+            const SizedBox(width: 8),
+            const Icon(Icons.image_outlined, color: AppColors.orangeButton, size: 20),
           ],
         ),
         const SizedBox(height: 8),
@@ -383,9 +384,9 @@ class _CreateShipmentScreenState extends ConsumerState<CreateShipmentScreen> {
               ),
               onPressed: _pickAndUploadImage,
               icon: const Icon(Icons.add_a_photo),
-              label: const Text(
-                'إضافة صورة للشحنة',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              label: Text(
+                'create_shipment.add_image'.tr(),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ),

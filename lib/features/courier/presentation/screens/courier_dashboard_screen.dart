@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,7 @@ import '../../../shipments/presentation/providers/shipment_providers.dart';
 import '../../../shipments/data/shipment_repository.dart';
 import '../../../auth/data/auth_provider.dart';
 import '../../../wallet/presentation/providers/wallet_providers.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 class CourierDashboardScreen extends ConsumerStatefulWidget {
   const CourierDashboardScreen({super.key});
@@ -38,7 +40,9 @@ class _CourierDashboardScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                'رصيدك لا يسمح، من فضلك قم بشحن محفظتك بمبلغ ${remaining.toStringAsFixed(2)} ج.م لإكمال ثمن الشحنة.'),
+              'courier.dashboard.actions.insufficient_balance'
+                  .tr(namedArgs: {'amount': remaining.toStringAsFixed(2)}),
+            ),
             backgroundColor: AppColors.error,
           ),
         );
@@ -52,21 +56,21 @@ class _CourierDashboardScreenState
       await repo.acceptShipment(shipmentId: shipmentId, courierId: user['id']);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم قبول الشحنة بنجاح!'),
+           SnackBar(
+            content: Text('courier.dashboard.actions.accept_success'.tr()),
             backgroundColor: AppColors.success,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        String errorMsg = 'حدث خطأ أثناء قبول الشحنة.';
+        String errorMsg = 'courier.dashboard.actions.accept_error'.tr();
         final errText = e.toString().toLowerCase();
         if (errText.contains('insufficient') || errText.contains('balance')) {
-          errorMsg = 'رصيدك لا يكفي للتأمين. برجاء شحن المحفظة.';
+          errorMsg = 'courier.dashboard.actions.insufficient_balance_short'.tr();
         } else if (errText.contains('already accepted') ||
             errText.contains('status')) {
-          errorMsg = 'تم قبول هذه الشحنة من قبل مندوب آخر.';
+          errorMsg = 'courier.dashboard.actions.already_accepted'.tr();
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorMsg), backgroundColor: AppColors.error),
@@ -84,8 +88,8 @@ class _CourierDashboardScreenState
       await repo.deliverShipment(shipmentId: shipmentId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم تسليم الشحنة بنجاح!'),
+           SnackBar(
+            content: Text('courier.dashboard.actions.deliver_success'.tr()),
             backgroundColor: AppColors.success,
           ),
         );
@@ -93,7 +97,7 @@ class _CourierDashboardScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e'), backgroundColor: AppColors.error),
+          SnackBar(content: Text('merchant.error'.tr(namedArgs: {'error': e.toString()})), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -159,19 +163,19 @@ class _CourierDashboardScreenState
           children: [
             Builder(
               builder: (context) {
-                final isRtl = Directionality.of(context) == TextDirection.rtl;
+                final isRtl = Directionality.of(context) == ui.TextDirection.rtl;
                 return Image.asset(
                   isRtl ? 'assets/images/logo_ar.png' : 'assets/images/logo_en.png',
-                  height: 56, // Increased height
+                  height: 100, // Increased height per user request
                   fit: BoxFit.contain,
                 );
               },
             ),
             Row(
               children: [
-                const Text(
-                  'مباشر',
-                  style: TextStyle(
+                Text(
+                  'courier.dashboard.live'.tr(),
+                  style: const TextStyle(
                     color: Color(0xFF2ECC71),
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -204,50 +208,50 @@ class _CourierDashboardScreenState
                   _buildTopCard(
                     iconBgColor: const Color(0xFF1F487E),
                     iconData: Icons.account_balance_wallet_outlined,
-                    title: 'الرصيد المتاح:',
-                    mainValue: '${totalBalance.toStringAsFixed(2)} ج.م',
-                    buttonText: 'سحب الرصيد المتاح',
+                    title: 'courier.dashboard.available_balance'.tr(),
+                    mainValue: '${totalBalance.toStringAsFixed(2)} ${'merchant.currency'.tr()}',
+                    buttonText: 'courier.dashboard.withdraw_balance'.tr(),
                     onButtonTap: () => context.push('/courier/wallet'),
                     footerLines: [
                       (
-                        'مبلغ محجوز (الضمان):',
-                        '${lockedGuarantee.toStringAsFixed(2)} ج.م',
+                        'courier.dashboard.locked_guarantee'.tr(),
+                        '${lockedGuarantee.toStringAsFixed(2)} ${'merchant.currency'.tr()}',
                       ),
                     ],
                   ),
                   _buildTopCard(
                     iconBgColor: const Color(0xFF2ECC71),
                     iconData: Icons.check,
-                    title: 'تم التسليم:',
+                    title: 'courier.dashboard.delivered'.tr(),
                     mainValue: '$deliveredCount',
                     footerLines: [
                       (
-                        'عمولة التوصيل المكتسبة:',
-                        '${earnedDeliveryFee.toStringAsFixed(2)} ج.م',
+                        'courier.dashboard.earned_fee'.tr(),
+                        '${earnedDeliveryFee.toStringAsFixed(2)} ${'merchant.currency'.tr()}',
                       ),
-                      ('فك الضمان:', '$deliveredCount'),
+                      ('courier.dashboard.guarantee_release'.tr(), '$deliveredCount'),
                     ],
                   ),
                   _buildTopCard(
                     iconBgColor: const Color(0xFFF39C12),
                     iconData: Icons.local_shipping_outlined,
-                    title: 'جاري توصيلها:',
+                    title: 'courier.dashboard.in_transit'.tr(),
                     mainValue: '$inTransitCount',
                     footerLines: [
                       (
-                        'مبلغ التأمين المحجوز:',
-                        '${lockedGuarantee.toStringAsFixed(2)} ج.م',
+                        'courier.dashboard.locked_insurance'.tr(),
+                        '${lockedGuarantee.toStringAsFixed(2)} ${'merchant.currency'.tr()}',
                       ),
                     ],
                   ),
                   _buildTopCard(
                     iconBgColor: const Color(0xFFE74C3C),
                     iconData: Icons.close,
-                    title: 'مرتجعة / مشكلة:',
+                    title: 'courier.dashboard.returned_issue'.tr(),
                     mainValue: '$returnedCount',
                     footerLines: [
-                      ('مرتجعة (فك الضمان):', '$returnedCount'),
-                      ('مشاكل معلقة:', '0'),
+                      ('courier.dashboard.returned_guarantee'.tr(), '$returnedCount'),
+                      ('courier.dashboard.pending_issues'.tr(), '0'),
                     ],
                   ),
                 ],
@@ -258,32 +262,32 @@ class _CourierDashboardScreenState
 
             // ─── Available Shipments ───
             _buildSectionHeader(
-              title: 'الشحنات المتاحة',
+              title: 'courier.available_shipments'.tr(),
               badge: availableShipmentsAsync.when(
-                data: (s) => '${s.length} شحنة متاحة',
+                data: (s) => 'courier.dashboard.available_shipments_badge'.tr(namedArgs: {'count': s.length.toString()}),
                 loading: () => '...',
                 error: (_, __) => '',
               ),
             ),
             const SizedBox(height: 12),
             _buildTableCard(
-              headers: const [
-                'صورة',
-                'الوزن',
-                'من',
-                'إلى',
-                'السعر',
-                'العمولة',
-                'الحالة',
-                'الإجراء',
+              headers: [
+                'courier.dashboard.table.image'.tr(),
+                'courier.dashboard.table.weight'.tr(),
+                'courier.dashboard.table.from'.tr(),
+                'courier.dashboard.table.to'.tr(),
+                'courier.dashboard.table.price'.tr(),
+                'courier.dashboard.table.fee'.tr(),
+                'courier.dashboard.table.status'.tr(),
+                'courier.dashboard.table.action'.tr(),
               ],
               flexes: const [1, 1, 1, 1, 1, 1, 1, 2],
               child: availableShipmentsAsync.when(
                 data: (shipments) {
                   if (shipments.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.all(24.0),
-                      child: Center(child: Text('لا توجد شحنات متاحة حالياً.')),
+                    return Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Center(child: Text('courier.no_shipments'.tr())),
                     );
                   }
                   return Column(
@@ -298,7 +302,7 @@ class _CourierDashboardScreenState
                 ),
                 error: (e, st) => Padding(
                   padding: const EdgeInsets.all(24.0),
-                  child: Text('خطأ: $e'),
+                  child: Text('merchant.error'.tr(namedArgs: {'error': e.toString()})),
                 ),
               ),
             ),
@@ -307,27 +311,27 @@ class _CourierDashboardScreenState
 
             // ─── Active Shipments ───
             _buildSectionHeader(
-              title: 'شحنات جاري توصيلها و المعاملات النشطة',
+              title: 'courier.dashboard.active_shipments_title'.tr(),
               badge: '',
             ),
             const SizedBox(height: 12),
             _buildTableCard(
-              headers: const [
-                'Tracking #',
-                'من',
-                'إلى',
-                'سعر',
-                'الحالة',
-                'تأكيد التسليم',
-                'إجراء آخر',
+              headers: [
+                'courier.dashboard.table.tracking'.tr(),
+                'courier.dashboard.table.from'.tr(),
+                'courier.dashboard.table.to'.tr(),
+                'courier.dashboard.table.price'.tr(),
+                'courier.dashboard.table.status'.tr(),
+                'courier.dashboard.table.confirm_delivery'.tr(),
+                'courier.dashboard.table.other_action'.tr(),
               ],
               flexes: const [1, 1, 1, 1, 1, 2, 2],
               child: courierShipmentsAsync.when(
                 data: (shipments) {
                   if (shipments.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.all(24.0),
-                      child: Center(child: Text('لا توجد شحنات نشطة حالياً.')),
+                    return Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Center(child: Text('courier.dashboard.no_active_shipments'.tr())),
                     );
                   }
                   return Column(
@@ -340,7 +344,7 @@ class _CourierDashboardScreenState
                 ),
                 error: (e, st) => Padding(
                   padding: const EdgeInsets.all(24.0),
-                  child: Text('خطأ: $e'),
+                  child: Text('merchant.error'.tr(namedArgs: {'error': e.toString()})),
                 ),
               ),
             ),
@@ -653,10 +657,10 @@ class _CourierDashboardScreenState
                   color: const Color(0xFFFFF3CD),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'قيد الانتظار',
+                child: Text(
+                  'courier.dashboard.status.pending_text'.tr(),
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Color(0xFF856404),
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
@@ -694,9 +698,9 @@ class _CourierDashboardScreenState
                               strokeWidth: 2,
                             ),
                           )
-                        : const Text(
-                            'قبول الشحنة',
-                            style: TextStyle(
+                        : Text(
+                            'courier.accept'.tr(),
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
@@ -705,7 +709,7 @@ class _CourierDashboardScreenState
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'إيداع $price EGP مؤقتاً',
+                  'courier.dashboard.actions.temporary_deposit'.tr(namedArgs: {'price': '$price EGP'}),
                   style: const TextStyle(fontSize: 10, color: Colors.grey),
                 ),
               ],
@@ -793,10 +797,10 @@ class _CourierDashboardScreenState
                       ),
                     ),
                     if (status == 'delivered')
-                      const Text(
-                        '(انتظار التاجر)',
+                      Text(
+                        'courier.dashboard.status.delivered_merchant_wait'.tr(),
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey, fontSize: 9),
+                        style: const TextStyle(color: Colors.grey, fontSize: 9),
                       ),
                   ],
                 ),
@@ -833,9 +837,9 @@ class _CourierDashboardScreenState
                                       strokeWidth: 2,
                                     ),
                                   )
-                                : const Text(
-                                    'تأكيد التسليم',
-                                    style: TextStyle(
+                                : Text(
+                                    'courier.dashboard.actions.deliver'.tr(),
+                                    style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -843,18 +847,18 @@ class _CourierDashboardScreenState
                           ),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          '(تأكيد العمولة)',
-                          style: TextStyle(fontSize: 10, color: Colors.grey),
+                        Text(
+                          'courier.dashboard.actions.confirm_fee'.tr(),
+                          style: const TextStyle(fontSize: 10, color: Colors.grey),
                         ),
                       ],
                     )
                   : status == 'delivered'
-                  ? const Center(
+                  ? Center(
                       child: Text(
-                        'تم تأكيد التاجر\n(انتظار فك الضمان)',
+                        'courier.dashboard.actions.merchant_confirmed'.tr(),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 11,
                         ),
@@ -880,9 +884,9 @@ class _CourierDashboardScreenState
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: const Text(
-                          'الإبلاغ عن مشكلة',
-                          style: TextStyle(
+                        child: Text(
+                          'courier.dashboard.actions.report_issue'.tr(),
+                          style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                           ),
@@ -902,9 +906,9 @@ class _CourierDashboardScreenState
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: const Text(
-                          'عرض الدفع',
-                          style: TextStyle(
+                        child: Text(
+                          'courier.dashboard.actions.view_payment'.tr(),
+                          style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -940,20 +944,20 @@ class _CourierDashboardScreenState
   String _getStatusText(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
-        return 'متاحة للقبول';
+        return 'courier.dashboard.status.pending_text'.tr();
       case 'accepted':
-        return 'قيد التوصيل';
+        return 'courier.dashboard.status.accepted_text'.tr();
       case 'in_transit':
-        return 'في الطريق';
+        return 'courier.dashboard.status.in_transit_text'.tr();
       case 'delivered':
-        return 'تم التسليم';
+        return 'courier.dashboard.status.delivered_text'.tr();
       case 'cancelled':
-        return 'تم الإلغاء';
+        return 'courier.dashboard.status.cancelled_text'.tr();
       case 'rejected':
       case 'returned':
-        return 'مرتجعة';
+        return 'courier.dashboard.status.returned_text'.tr();
       default:
-        return 'غير محدد';
+        return 'courier.dashboard.status.unknown'.tr();
     }
   }
 }

@@ -1,18 +1,23 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../features/auth/data/auth_provider.dart';
+import '../../features/support/data/support_service.dart';
 
 const String _phoneNumber = '01229696427';
-const String _whatsappNumber =
-    '201229696427'; // International format for WhatsApp
 
-class CustomerServiceFab extends StatefulWidget {
+/// FAB is now a ConsumerStatefulWidget so it can read Riverpod providers
+class CustomerServiceFab extends ConsumerStatefulWidget {
   const CustomerServiceFab({super.key});
 
   @override
-  State<CustomerServiceFab> createState() => _CustomerServiceFabState();
+  ConsumerState<CustomerServiceFab> createState() =>
+      _CustomerServiceFabState();
 }
 
-class _CustomerServiceFabState extends State<CustomerServiceFab>
+class _CustomerServiceFabState extends ConsumerState<CustomerServiceFab>
     with SingleTickerProviderStateMixin {
   bool _isOpen = false;
   late AnimationController _controller;
@@ -56,10 +61,51 @@ class _CustomerServiceFabState extends State<CustomerServiceFab>
     }
   }
 
+  /// Opens WhatsApp using the dynamic support number and pre-filled message structure.
   Future<void> _openWhatsApp() async {
-    final uri = Uri.parse('https://wa.me/$_whatsappNumber');
+    _toggle(); // close FAB before launching
+
+    // 1. Fetch dynamic support number
+    final supportNumber = await ref.read(supportNumberProvider.future);
+
+    // 2. Fetch User Information
+    final user = Supabase.instance.client.auth.currentUser;
+    final userId = user?.id ?? 'غير معروف';
+    final rawRole = user?.userMetadata?['role'] as String?;
+    
+    String roleText = 'مستخدم';
+    if (rawRole == 'merchant') roleText = 'تاجر';
+    if (rawRole == 'courier') roleText = 'طيار';
+
+    // Read the user profile synchronously from the cached provider
+    final profileAsync = ref.read(userProfileProvider);
+    final userName = profileAsync.when(
+      data: (profile) =>
+          (profile?['full_name'] as String?)?.trim().isNotEmpty == true
+              ? profile!['full_name'] as String
+              : 'عميل',
+      loading: () => 'عميل',
+      error: (_, __) => 'عميل',
+    );
+
+    // 3. Format message
+    final String messageText = '''مرحبا
+أنا $roleText في تطبيق فوريرة وأحتاج مساعدة
+
+الاسم: $userName
+المعرف: $userId''';
+
+    final message = Uri.encodeComponent(messageText);
+    final uri = Uri.parse('https://wa.me/$supportNumber?text=$message');
+
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا يمكن فتح واتساب، يرجى التأكد من تثبيته.')),
+        );
+      }
     }
   }
 
@@ -75,7 +121,8 @@ class _CustomerServiceFabState extends State<CustomerServiceFab>
             onTap: _toggle,
             child: Container(
               margin: const EdgeInsets.only(bottom: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
@@ -88,13 +135,13 @@ class _CustomerServiceFabState extends State<CustomerServiceFab>
                 ],
               ),
               child: const Text(
-                'خدمة العملاء',
+                'customer_service',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                   color: Color(0xFF1A237E),
                 ),
-              ),
+              ).tr(),
             ),
           ),
 
@@ -107,19 +154,17 @@ class _CustomerServiceFabState extends State<CustomerServiceFab>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Phone button
                 _buildSubButton(
                   icon: Icons.phone,
                   color: const Color(0xFF1976D2),
-                  label: 'اتصال',
+                  label: 'call'.tr(),
                   onTap: _callPhone,
                 ),
                 const SizedBox(height: 10),
-                // WhatsApp button
                 _buildSubButton(
                   icon: Icons.chat,
                   color: const Color(0xFF25D366),
-                  label: 'واتساب',
+                  label: 'whatsapp'.tr(),
                   onTap: _openWhatsApp,
                 ),
                 const SizedBox(height: 10),
@@ -136,12 +181,14 @@ class _CustomerServiceFabState extends State<CustomerServiceFab>
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: _isOpen ? Colors.red.shade400 : const Color(0xFFFF8800),
+              color:
+                  _isOpen ? Colors.red.shade400 : const Color(0xFFFF8800),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: (_isOpen ? Colors.red : const Color(0xFFFF8800))
-                      .withValues(alpha: 0.4),
+                  color:
+                      (_isOpen ? Colors.red : const Color(0xFFFF8800))
+                          .withValues(alpha: 0.4),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -174,7 +221,8 @@ class _CustomerServiceFabState extends State<CustomerServiceFab>
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
